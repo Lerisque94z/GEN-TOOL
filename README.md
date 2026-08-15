@@ -214,7 +214,7 @@
 <!-- ============================================================ -->
 
 ## 📥 Installation
-
+alors tres facile juste a lancer le requiment.bat et puis ensuite le Gen-Tool
 <br>
 
 ### 1️⃣ Clone le dépôt
