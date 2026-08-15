@@ -1,5 +1,4 @@
-# GEN-TOOL
-Multi-Tool Ultimate — 50+ modules de hacking et OSINT
+
 <p align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&color=FF0000&height=200&section=header&text=GEN-TOOL&fontSize=70&fontColor=FFFFFF&animation=fadeIn" alt="Header"/>
 </p>
