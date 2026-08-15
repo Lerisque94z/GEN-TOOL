@@ -86,14 +86,139 @@ Multi-Tool Ultimate — 50+ modules de hacking et OSINT
 </p>
 
 <!-- ============================================================ -->
-<!-- INSTALLATION ET LANCEMENT -->
+<!-- FONCTIONNALITÉS -->
 <!-- ============================================================ -->
 
-## 🚀 Installation et Lancement
+## ✨ Fonctionnalités
 
 <br>
 
-### 📦 Étape 1 : Télécharger le projet
+### 📡 NETWORK SCANNERS
+
+| 🔗 Module | 📝 Description |
+|---|---|
+| **Show My IP** | IP publique + locale + géolocalisation |
+| **IP Scanner** | Scan d'IP et résolution DNS |
+| **IP Pinger** | Ping avec statistiques détaillées |
+| **IP Port Scanner** | Scan des ports avec noms |
+| **Website Info Scanner** | Infos détaillées sur un site |
+| **Subdomain Scanner** | Découverte de sous-domaines |
+| **DNS Lookup** | Résolution DNS |
+| **Port Scanner Advanced** | Scan de plage de ports |
+| **Geo Locator** | Localisation complète d'une IP |
+| **Website Info** | Analyse d'un site web |
+
+<br>
+
+### 🔎 OSINT
+
+| 🔗 Module | 📝 Description |
+|---|---|
+| **Username Tracker** | Recherche sur 10 réseaux sociaux |
+| **Email Tracker** | Analyse d'email avec MX records |
+| **Phone Tracker** | Opérateur et pays |
+| **Leak Search** | Recherche de fuites de données |
+| **Leak DB Browser** | Parcours d'une base de données |
+
+<br>
+
+### ⚡ OTHER
+
+| 🔗 Module | 📝 Description |
+|---|---|
+| **Password Generator** | Mots de passe avec force |
+| **Email Generator** | Génération d'emails |
+| **Base64 Tool** | Encode/Decode + fichiers |
+| **URL Shortener** | Raccourcissement d'URL |
+| **DDoS HTTP** | Attaque multi-threads |
+| **DDOS IP ULTRA** | Attaque TCP + UDP |
+
+<br>
+
+### 🎮 DISCORD TOOLS
+
+| 🔗 Module | 📝 Description |
+|---|---|
+| **Discord Token Grabber** | Extraction de tokens |
+| **Discord Token Checker** | Infos du compte |
+| **Discord Token Nuker** | Destruction de serveurs |
+| **Discord Spammer** | Spam de messages |
+
+<br>
+
+### 💀 EXPLOITS & SHELLS
+
+| 🔗 Module | 📝 Description |
+|---|---|
+| **Reverse Shell** | Python, Netcat, PowerShell |
+| **Bind Shell** | Shell lié à un port |
+| **Payload Generator** | 5 types de payloads |
+| **Exploit Finder** | Recherche d'exploits |
+| **CVE Scanner** | Scan de vulnérabilités |
+| **XSS Scanner** | Test XSS |
+
+<br>
+
+### 📶 WIFI TOOLS
+
+| 🔗 Module | 📝 Description |
+|---|---|
+| **Wi-Fi Scanner** | Scan des réseaux |
+| **Wi-Fi Deauth** | Déauthentification |
+| **Wi-Fi Handshake** | Capture de handshake |
+| **Subdomain Bruteforce** | Bruteforce de sous-domaines |
+
+<br>
+
+### 🛠️ ADVANCED TOOLS
+
+| 🔗 Module | 📝 Description |
+|---|---|
+| **SQLi Scanner** | Test de vulnérabilités SQL |
+| **SQLi Dumper** | Dump de bases de données |
+| **Web Scanner** | Scan de sites web |
+| **Admin Finder** | Détection de pages admin |
+| **Hash Cracker** | Crack de hashs |
+
+<br>
+
+### 🔨 BUILDERS
+
+| 🔗 Module | 📝 Description |
+|---|---|
+| **VIRUS BUILDER (RAT ULTIME)** | RAT complet |
+| **Keylogger Builder** | Keylogger |
+| **SnapHack Builder** | Phishing Snapchat |
+| **Ransomware Builder** | Ransomware (simulation) |
+
+<br>
+
+### 📋 MISC
+
+| 🔗 Module | 📝 Description |
+|---|---|
+| **Whois Lookup** | Infos de domaine |
+| **DNS Zone Transfer** | Transfert de zone |
+| **Email Verifier** | Validation d'email |
+| **Phone Validator** | Validation de numéro |
+
+<!-- ============================================================ -->
+<!-- DIVIDER -->
+<!-- ============================================================ -->
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/colored.png" width="80%">
+</p>
+
+<!-- ============================================================ -->
+<!-- INSTALLATION -->
+<!-- ============================================================ -->
+
+## 📥 Installation
+
+<br>
+
+### 1️⃣ Clone le dépôt
 
 ```bash
 git clone https://github.com/Lerisque94z/GEN-TOOL.git
